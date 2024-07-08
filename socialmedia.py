@@ -48,7 +48,6 @@ def download_and_send_video(link, chat_id, update: Update, context: CallbackCont
             if video_source:
                 update.message.reply_text("Sending the video...")
                 try:
-                    load_dotenv()
                     BOT_TOKEN = os.getenv("BOT_TOKEN")
                     telegram_bot_token = BOT_TOKEN
                     bot = Bot(token=telegram_bot_token)
