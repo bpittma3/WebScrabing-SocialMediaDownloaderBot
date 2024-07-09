@@ -1,5 +1,6 @@
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.firefox.options import Options
 import os
 import requests
 from telegram import Bot
@@ -19,7 +20,10 @@ def handle_text_message(update: Update, context: CallbackContext):
         update.message.reply_text("This message does not contain a link.")
 
 def download_and_send_video(link, chat_id, update: Update, context: CallbackContext):
-    driver = webdriver.Firefox()
+    options = Options()
+    options.headless = True  # Run in headless mode
+
+    driver = webdriver.Firefox(options=options)
 
     try:
         driver.get("https://publer.io/tools/media-downloader")
@@ -59,7 +63,7 @@ def download_and_send_video(link, chat_id, update: Update, context: CallbackCont
 
 def main():
     BOT_TOKEN = os.getenv("BOT_TOKEN")
-    updater = Updater(token=BOT_TOKEN, use_context=True) 
+    updater = Updater(token=BOT_TOKEN, use_context=True)
     dp = updater.dispatcher
 
     dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_text_message))
