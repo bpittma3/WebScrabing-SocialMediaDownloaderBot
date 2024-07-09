@@ -1,11 +1,11 @@
-from playwright.sync_api import sync_playwright
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+import os
+import requests
 from telegram import Bot
 from telegram import Update
 from telegram.ext import Updater, MessageHandler, Filters, CallbackContext
 import re
-import requests
-import os
-
 
 def handle_text_message(update: Update, context: CallbackContext):
     text = update.message.text
@@ -19,65 +19,51 @@ def handle_text_message(update: Update, context: CallbackContext):
         update.message.reply_text("This message does not contain a link.")
 
 def download_and_send_video(link, chat_id, update: Update, context: CallbackContext):
+    driver = webdriver.Firefox()
 
-    with sync_playwright() as p:
-        try:
-            browser = p.firefox.launch(headless=True)
-            context = browser.new_context()
-            page = context.new_page()
+    try:
+        driver.get("https://publer.io/tools/media-downloader")
 
-            # Open The Page
-            page.goto("https://publer.io/tools/media-downloader", timeout=60000)
+        url_input = driver.find_element_by_name("url")
+        url_input.send_keys(link)
+        url_input.send_keys(Keys.RETURN)
 
-            page.press('input[name="url"]', 'Enter')
-            page.fill('input[name="url"]', link)
-            page.press('input[name="url"]', 'Enter')
+        driver.implicitly_wait(10)
 
-            # Click the Button
-            page.click('button[type="submit"]')
+        video_element = driver.find_element_by_tag_name("video")
+        video_source = video_element.get_attribute("src")
 
-            page.wait_for_load_state("load")
+        if video_source:
+            update.message.reply_text("Sending the video...")
+            try:
+                BOT_TOKEN = os.getenv("BOT_TOKEN")
+                telegram_bot_token = BOT_TOKEN
+                bot = Bot(token=telegram_bot_token)
+                response = requests.get(video_source, stream=True)
+                if response.status_code == 200:
+                    bot.send_video(chat_id=update.effective_chat.id, video=response.raw)
+                else:
+                    raise Exception(f"Failed to download video. Status code: {response.status_code}")
 
-            # Wait for video to be ready
-            page.wait_for_selector("video")
+            except Exception as e:
+                update.message.reply_text(f'Error sending video link: {str(e)}')
 
-            # Get video element and source URL
-            video_element = page.query_selector("video")
-            video_source = video_element.get_attribute("src")
+        else:
+            raise Exception("Video source not found in the HTML.")
 
-            if video_source:
-                update.message.reply_text("Sending the video...")
-                try:
-                    BOT_TOKEN = os.getenv("BOT_TOKEN")
-                    telegram_bot_token = BOT_TOKEN
-                    bot = Bot(token=telegram_bot_token)
-                    response = requests.get(video_source, stream=True)
-                    if response.status_code == 200:
-                        bot.send_video(chat_id=update.effective_chat.id, video=response.raw)
-                    else:
-                        raise Exception(f"Failed to download video. Status code: {response.status_code}")
+    except Exception as e:
+        update.message.reply_text(f'Error: {str(e)}')
 
-                except Exception as e:
-                    update.message.reply_text(f'Error sending video link: {str(e)}')
-
-            else:
-                raise Exception("Video source not found in the HTML.")
-
-        except Exception as e:
-            update.message.reply_text(f'Error: {str(e)}')
-
-        finally:
-            browser.close()
+    finally:
+        driver.quit()
 
 def main():
-    # Write Your Bot Token
     BOT_TOKEN = os.getenv("BOT_TOKEN")
     updater = Updater(token=BOT_TOKEN, use_context=True) 
     dp = updater.dispatcher
 
     dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_text_message))
 
-    # Start The Bot
     updater.start_polling()
     updater.idle()
 
