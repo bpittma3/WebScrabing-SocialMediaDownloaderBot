@@ -62,7 +62,7 @@ def download_and_send_video(link, chat_id, update: Update, context: CallbackCont
         driver.quit()
 
 def main():
-    BOT_TOKEN = os.getenv("BOT_TOKEN")
+    BOT_TOKEN = os.getenv("7921364353:AAEfny8GCC0S-OGl2SeLto7w3AtDjg6DnDQ")
     updater = Updater(token=BOT_TOKEN, use_context=True)
     dp = updater.dispatcher
 
